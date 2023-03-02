@@ -4,7 +4,7 @@ import {
 } from 'redux';
 import { v4 as uuid } from 'uuid';
 import WrappedStorage from './WrappedStorage';
-import { cloneDeep, isEqual, diffDeep, mergeOrReplace } from './utils';
+import { cloneDeep, isEqual,  mergeOrReplace } from './utils';
 import { ChangeListener } from './types/listeners';
 import {
   ActionExtension, ExtendedStore, StoreCreatorContainer
@@ -70,21 +70,17 @@ export default class ReduxedStorage<
 
   init(): Promise<ExtendedStore> {
     this.tmstamp || this.isolated ||
-    this.storage.subscribe( (data, oldData) => {
+    this.storage.subscribe( (data) => {
       const [ state, id, timestamp ] = unpackState(data);
       if (id === this.id || isEqual(state, this.state))
         return;
       const newTime = timestamp >= this.tmstamp;
-      const newState = newTime ?
-        mergeOrReplace(this.state, state, true) :
-        mergeOrReplace(state, this.state, true);
-      if (!newTime && isEqual(newState, this.state))
+
+      if (!newTime)
         return;
-      this._setState(newState, timestamp);
+      this._setState(state, timestamp);
       this._renewStore();
-      if (!isEqual(newState, state)) {
-        this._send2Storage();
-      }
+      isEqual(state, this.state) || this._send2Storage();
       this._callListeners();
     });
     const defaultState = this.store.getState();
@@ -93,8 +89,7 @@ export default class ReduxedStorage<
     return new Promise( resolve => {
       this.storage.load( data => {
         const [storedState, , timestamp] = unpackState(data);
-        let newState = storedState?
-          mergeOrReplace(defaultState, storedState) : defaultState;
+        let newState = storedState ? storedState : defaultState;
         if (this.resetState) {
           newState = mergeOrReplace(newState, this.resetState);
         }
@@ -138,10 +133,7 @@ export default class ReduxedStorage<
       if (sameStore) {
         this._setState(state);
       } else {
-        const diff = diffDeep(state, state0);
-        if (typeof diff === 'undefined')
-          return;
-        this._setState(mergeOrReplace(this.state, diff));
+        this._setState(state);
         this._renewStore();
       }
       this._send2Storage();
