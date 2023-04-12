@@ -9,7 +9,7 @@ import pkg from './package.json';
 const input = 'src/index.ts';
 const name = 'reduxedChromeStorage';
 const bubleOpts = {
-  transforms: { dangerousForOf: true },
+  transforms: { dangerousForOf: true, generator:false },
   include: ['src/**/*']
 };
 const licenseOpts = {

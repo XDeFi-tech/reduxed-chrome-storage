@@ -7,5 +7,5 @@ export interface ExtendedStore extends Store {
     dispatch: ExtendedDispatch;
 }
 export interface StoreCreatorContainer {
-    (preloadedState?: any): Store;
+    (preloadedState?: any): Promise<Store>;
 }

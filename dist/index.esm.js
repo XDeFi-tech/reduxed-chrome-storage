@@ -9,8 +9,35 @@
  *
  * Dependencies:
  *
+ * tslib v2.5.0
+ *
  * uuid v8.3.2
  */
+
+/******************************************************************************
+Copyright (c) Microsoft Corporation.
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+PERFORMANCE OF THIS SOFTWARE.
+***************************************************************************** */
+
+function __awaiter(thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+}
 
 // Unique ID creation requires a high quality random # generator. In the browser we therefore
 // require the crypto API and do not support built-in fallback to lower quality random number
@@ -177,7 +204,6 @@ class ReduxedStorage {
         this.plain = plainActions;
         this.timeout = outdatedTimeout ? Math.max(outdatedTimeout, 500) : 1000;
         this.resetState = resetState;
-        this.store = this._instantiateStore();
         this.state = null;
         this.id = v4();
         this.tmstamp = 0;
@@ -192,40 +218,45 @@ class ReduxedStorage {
         this[Symbol.observable] = this[Symbol.observable].bind(this);
     }
     init() {
-        this.tmstamp || this.isolated ||
-            this.storage.subscribe((data) => {
-                const [state, id, timestamp] = unpackState(data);
-                if (id === this.id || isEqual(state, this.state))
-                    return;
-                const newTime = timestamp >= this.tmstamp;
-                if (!newTime)
-                    return;
-                this._setState(state, timestamp);
-                this._renewStore();
-                isEqual(state, this.state) || this._send2Storage();
-                this._callListeners();
-            });
-        const defaultState = this.store.getState();
-        // return a promise to be resolved when the last state (if any)
-        // is restored from chrome.storage
-        return new Promise(resolve => {
-            this.storage.load(data => {
-                const [storedState, , timestamp] = unpackState(data);
-                let newState = storedState ? storedState : defaultState;
-                if (this.resetState) {
-                    newState = mergeOrReplace(newState, this.resetState);
-                }
-                this._setState(newState, timestamp);
-                this._renewStore();
-                isEqual(newState, storedState) || this._send2Storage();
-                resolve(this);
+        return __awaiter(this, void 0, void 0, function* () {
+            this.store = yield this._instantiateStore();
+            this.tmstamp || this.isolated ||
+                this.storage.subscribe((data) => __awaiter(this, void 0, void 0, function* () {
+                    const [state, id, timestamp] = unpackState(data);
+                    if (id === this.id || isEqual(state, this.state))
+                        return;
+                    const newTime = timestamp >= this.tmstamp;
+                    if (!newTime)
+                        return;
+                    this._setState(state, timestamp);
+                    yield this._renewStore();
+                    isEqual(state, this.state) || this._send2Storage();
+                    this._callListeners();
+                }));
+            const defaultState = this.store.getState();
+            // return a promise to be resolved when the last state (if any)
+            // is restored from chrome.storage
+            return new Promise(resolve => {
+                this.storage.load((data) => __awaiter(this, void 0, void 0, function* () {
+                    const [storedState, , timestamp] = unpackState(data);
+                    let newState = storedState ? storedState : defaultState;
+                    if (this.resetState && Object.keys(this.resetState).length > 0) {
+                        newState = this.resetState;
+                    }
+                    this._setState(newState, timestamp);
+                    yield this._renewStore();
+                    isEqual(newState, storedState) || this._send2Storage();
+                    resolve(this);
+                }));
             });
         });
     }
     initFrom(state) {
-        this._setState(state, 0);
-        this._renewStore();
-        return this;
+        return __awaiter(this, void 0, void 0, function* () {
+            this._setState(state, 0);
+            yield this._renewStore();
+            return this;
+        });
     }
     _setState(data, timestamp) {
         this.state = cloneDeep(data);
@@ -235,33 +266,35 @@ class ReduxedStorage {
         }
     }
     _renewStore() {
-        this.plain ? this.unsub && this.unsub() : this._clean();
-        const store = this.store = this._instantiateStore(this.state);
-        const now = Date.now();
-        const n = this.outdted.length;
-        this.outdted = this.outdted.map(([t, u], i) => t || i >= n - 1 ? [t, u] : [now, u]);
-        let state0 = cloneDeep(this.state);
-        const unsubscribe = this.store.subscribe(() => {
-            const state = store && store.getState();
-            const sameStore = this.store === store;
-            this._clean();
-            if (isEqual(state, this.state))
-                return;
-            if (sameStore) {
-                this._setState(state);
-            }
-            else {
-                this._setState(state);
-                this._renewStore();
-            }
-            this._send2Storage();
-            this._callListeners(true, state0);
-            state0 = cloneDeep(state);
+        return __awaiter(this, void 0, void 0, function* () {
+            this.plain ? this.unsub && this.unsub() : this._clean();
+            const store = this.store = yield this._instantiateStore(this.state);
+            const now = Date.now();
+            const n = this.outdted.length;
+            this.outdted = this.outdted.map(([t, u], i) => t || i >= n - 1 ? [t, u] : [now, u]);
+            let state0 = cloneDeep(this.state);
+            const unsubscribe = this.store.subscribe(() => __awaiter(this, void 0, void 0, function* () {
+                const state = store && store.getState();
+                const sameStore = this.store === store;
+                this._clean();
+                if (isEqual(state, this.state))
+                    return;
+                if (sameStore) {
+                    this._setState(state);
+                }
+                else {
+                    this._setState(state);
+                    yield this._renewStore();
+                }
+                this._send2Storage();
+                this._callListeners(true, state0);
+                state0 = cloneDeep(state);
+            }));
+            if (this.plain)
+                this.unsub = unsubscribe;
+            else
+                this.outdted.push([0, unsubscribe]);
         });
-        if (this.plain)
-            this.unsub = unsubscribe;
-        else
-            this.outdted.push([0, unsubscribe]);
     }
     _clean() {
         if (this.plain)
@@ -276,10 +309,12 @@ class ReduxedStorage {
         });
     }
     _instantiateStore(state) {
-        const store = this.container(state);
-        if (typeof store !== 'object' || typeof store.getState !== 'function')
-            throw new Error(`Invalid 'storeCreatorContainer' supplied`);
-        return store;
+        return __awaiter(this, void 0, void 0, function* () {
+            const store = yield this.container(state);
+            if (typeof store !== 'object' || typeof store.getState !== 'function')
+                throw new Error(`Invalid 'storeCreatorContainer' supplied`);
+            return store;
+        });
     }
     _send2Storage() {
         this.storage.save(packState(this.state, this.id, this.tmstamp));
@@ -302,11 +337,11 @@ class ReduxedStorage {
         };
     }
     dispatch(action) {
-        return this.store.dispatch(action);
+        return this.store && this.store.dispatch(action);
     }
     replaceReducer(nextReducer) {
         if (typeof nextReducer === 'function') {
-            this.store.replaceReducer(nextReducer);
+            this.store && this.store.replaceReducer(nextReducer);
         }
         return this;
     }
@@ -505,19 +540,18 @@ function setupReduxed(storeCreatorContainer, options, listeners) {
             namespace: chromeNs || chrome, area: storageArea, key: storageKey
         });
     typeof onGlobalChange === 'function' &&
-        storage.regListener((data, oldData) => {
+        storage.regListener((data, oldData) => __awaiter(this, void 0, void 0, function* () {
             const store = new ReduxedStorage(storeCreatorContainer, storage, true, plainActions);
             const [state] = unpackState(data);
             const [oldState] = unpackState(oldData);
-            onGlobalChange(store.initFrom(state), oldState);
-        });
+            onGlobalChange(yield store.initFrom(state), oldState);
+        }));
     isolated || storage.regShared();
-    const instantiate = (resetState) => {
+    return (resetState) => {
         onError && storage.subscribeForError(onError);
         const store = new ReduxedStorage(storeCreatorContainer, storage, isolated, plainActions, outdatedTimeout, onLocalChange, resetState);
         return store.init();
     };
-    return instantiate;
 }
 
 export { cloneDeep, diffDeep, isEqual, mergeOrReplace, setupReduxed };

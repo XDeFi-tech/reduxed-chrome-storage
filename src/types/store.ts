@@ -11,5 +11,5 @@ export interface ExtendedStore extends Store {
 }
 
 export interface StoreCreatorContainer {
-  (preloadedState?: any): Store;
+  (preloadedState?: any): Promise<Store>;
 }

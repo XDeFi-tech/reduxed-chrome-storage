@@ -1,4 +1,4 @@
-import { ExtendedStore, StoreCreatorContainer } from './types/store';
+import { StoreCreatorContainer } from './types/store';
 import { ChromeNamespace, BrowserNamespace } from './types/apis';
 import { ChangeListener, ErrorListener } from './types/listeners';
 import { cloneDeep, isEqual, diffDeep, mergeOrReplace } from './utils';
@@ -69,5 +69,5 @@ export interface ReduxedSetupListeners {
  * will be reset entirely or partially upon the store replacement creation.
  * Returns a Promise to be resolved when the created store replacement is ready
  */
-declare function setupReduxed(storeCreatorContainer: StoreCreatorContainer, options?: ReduxedSetupOptions, listeners?: ReduxedSetupListeners): (resetState?: any) => Promise<ExtendedStore>;
+declare function setupReduxed(storeCreatorContainer: StoreCreatorContainer, options?: ReduxedSetupOptions, listeners?: ReduxedSetupListeners): (resetState?: any) => Promise<import("./types/store").ExtendedStore>;
 export { setupReduxed, cloneDeep, isEqual, diffDeep, mergeOrReplace };

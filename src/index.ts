@@ -1,7 +1,7 @@
 import ReduxedStorage, { unpackState } from './ReduxedStorage';
 import WrappedChromeStorage from './WrappedChromeStorage';
 import WrappedBrowserStorage from './WrappedBrowserStorage';
-import { ExtendedStore, StoreCreatorContainer } from './types/store';
+import {  StoreCreatorContainer } from './types/store';
 import { ChromeNamespace, BrowserNamespace } from './types/apis';
 import { ChangeListener, ErrorListener } from './types/listeners';
 import { cloneDeep, isEqual, diffDeep, mergeOrReplace } from './utils';
@@ -113,26 +113,24 @@ function setupReduxed(
       namespace: chromeNs || chrome, area: storageArea, key: storageKey
     });
   typeof onGlobalChange === 'function' &&
-  storage.regListener( (data, oldData) => {
+  storage.regListener( async (data, oldData) => {
     const store = new ReduxedStorage(
       storeCreatorContainer, storage, true, plainActions
     );
     const [ state ] = unpackState(data);
     const [ oldState ] = unpackState(oldData);
-    onGlobalChange(store.initFrom(state), oldState);
+    onGlobalChange(await store.initFrom(state), oldState);
   });
   isolated || storage.regShared();
 
-  const instantiate = (resetState?: any): Promise<ExtendedStore> => {
+  return (resetState?: any)=> {
     onError && storage.subscribeForError(onError);
     const store = new ReduxedStorage(
       storeCreatorContainer, storage, isolated, plainActions, outdatedTimeout,
       onLocalChange, resetState
     );
-    return store.init();
-  }
-
-  return instantiate;
+    return store.init()
+  };
 }
 
 export { setupReduxed, cloneDeep, isEqual, diffDeep, mergeOrReplace }

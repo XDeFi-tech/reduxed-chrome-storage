@@ -27,13 +27,13 @@ export const unpackState = (data: any): [any, string, number] => {
 export default class ReduxedStorage<
   W extends WrappedStorage<any>, A extends Action
 > {
-  container: StoreCreatorContainer;
+  container:  StoreCreatorContainer;
   storage: W;
   isolated?: boolean;
   plain?: boolean;
   timeout: number;
   resetState: any;
-  store: ExtendedStore;
+  store?: ExtendedStore;
   state: any;
   id: string;
   tmstamp: number;
@@ -53,7 +53,6 @@ export default class ReduxedStorage<
     this.plain = plainActions;
     this.timeout = outdatedTimeout? Math.max(outdatedTimeout, 500) : 1000;
     this.resetState = resetState;
-    this.store = this._instantiateStore();
     this.state = null;
     this.id = uuid();
     this.tmstamp = 0;
@@ -68,9 +67,10 @@ export default class ReduxedStorage<
     this[Symbol.observable] = this[Symbol.observable].bind(this);
   }
 
-  init(): Promise<ExtendedStore> {
+  async init(): Promise<ExtendedStore> {
+    this.store = await this._instantiateStore()
     this.tmstamp || this.isolated ||
-    this.storage.subscribe( (data) => {
+    this.storage.subscribe( async (data) => {
       const [ state, id, timestamp ] = unpackState(data);
       if (id === this.id || isEqual(state, this.state))
         return;
@@ -79,7 +79,7 @@ export default class ReduxedStorage<
       if (!newTime)
         return;
       this._setState(state, timestamp);
-      this._renewStore();
+      await this._renewStore();
       isEqual(state, this.state) || this._send2Storage();
       this._callListeners();
     });
@@ -87,23 +87,23 @@ export default class ReduxedStorage<
     // return a promise to be resolved when the last state (if any)
     // is restored from chrome.storage
     return new Promise( resolve => {
-      this.storage.load( data => {
+      this.storage.load(async data => {
         const [storedState, , timestamp] = unpackState(data);
         let newState = storedState ? storedState : defaultState;
         if (this.resetState && Object.keys(this.resetState).length > 0) {
           newState = this.resetState;
         }
         this._setState(newState, timestamp);
-        this._renewStore();
+        await this._renewStore();
         isEqual(newState, storedState) || this._send2Storage();
         resolve(this as ExtendedStore);
       });
     });
   }
 
-  initFrom(state: any): ExtendedStore {
+  async initFrom(state: any): Promise<ExtendedStore> {
     this._setState(state, 0);
-    this._renewStore();
+    await this._renewStore();
     return this as ExtendedStore;
   }
 
@@ -115,16 +115,16 @@ export default class ReduxedStorage<
     }
   }
 
-  _renewStore() {
+  async _renewStore() {
     this.plain? this.unsub && this.unsub() : this._clean();
-    const store = this.store = this._instantiateStore(this.state);
+    const store = this.store = await this._instantiateStore(this.state);
     const now = Date.now();
     const n = this.outdted.length;
     this.outdted = this.outdted.map( ([t, u], i) =>
       t || i >= n-1 ? [t, u] : [now, u]
     );
     let state0 = cloneDeep(this.state);
-    const unsubscribe = this.store.subscribe( () => {
+    const unsubscribe = this.store.subscribe( async () => {
       const state = store && store.getState();
       const sameStore = this.store === store;
       this._clean();
@@ -134,7 +134,7 @@ export default class ReduxedStorage<
         this._setState(state);
       } else {
         this._setState(state);
-        this._renewStore();
+        await this._renewStore();
       }
       this._send2Storage();
       this._callListeners(true, state0);
@@ -159,8 +159,8 @@ export default class ReduxedStorage<
     });
   }
 
-  _instantiateStore(state?: any) {
-    const store = this.container(state);
+  async _instantiateStore(state?: any) {
+    const store = await this.container(state);
     if (typeof store !== 'object' || typeof store.getState !== 'function')
       throw new Error(`Invalid 'storeCreatorContainer' supplied`);
     return store as ExtendedStore;
@@ -191,12 +191,12 @@ export default class ReduxedStorage<
   }
 
   dispatch(action: A | ActionExtension) {
-    return this.store.dispatch(action);
+    return this.store && this.store.dispatch(action);
   }
 
   replaceReducer(nextReducer: Reducer): ExtendedStore {
     if (typeof nextReducer === 'function') {
-      this.store.replaceReducer(nextReducer);
+      this.store && this.store.replaceReducer(nextReducer);
     }
     return this as ExtendedStore;
   }
