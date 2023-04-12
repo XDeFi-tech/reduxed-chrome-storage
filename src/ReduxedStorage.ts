@@ -4,7 +4,7 @@ import {
 } from 'redux';
 import { v4 as uuid } from 'uuid';
 import WrappedStorage from './WrappedStorage';
-import { cloneDeep, isEqual,  mergeOrReplace } from './utils';
+import { cloneDeep, isEqual } from './utils';
 import { ChangeListener } from './types/listeners';
 import {
   ActionExtension, ExtendedStore, StoreCreatorContainer
@@ -90,8 +90,8 @@ export default class ReduxedStorage<
       this.storage.load( data => {
         const [storedState, , timestamp] = unpackState(data);
         let newState = storedState ? storedState : defaultState;
-        if (this.resetState) {
-          newState = mergeOrReplace(newState, this.resetState);
+        if (this.resetState && Object.keys(this.resetState).length > 0) {
+          newState = this.resetState;
         }
         this._setState(newState, timestamp);
         this._renewStore();
